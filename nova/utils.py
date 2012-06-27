@@ -875,13 +875,17 @@ def loads(s):
     return json.loads(s)
 
 
+def load(s):
+    return json.load(s)
+
+
 try:
     import anyjson
 except ImportError:
     pass
 else:
     anyjson._modules.append(("nova.utils", "dumps", TypeError,
-                                           "loads", ValueError))
+                                           "loads", ValueError, 'load'))
     anyjson.force_implementation("nova.utils")
 
 

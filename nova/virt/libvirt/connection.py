@@ -142,7 +142,7 @@ libvirt_opts = [
                   'iscsi=nova.virt.libvirt.volume.LibvirtISCSIVolumeDriver',
                   'local=nova.virt.libvirt.volume.LibvirtVolumeDriver',
                   'fake=nova.virt.libvirt.volume.LibvirtFakeVolumeDriver',
-                  'rbd=nova.virt.libvirt.volume.LibvirtNetVolumeDriver',
+                  'rbd=nova.virt.libvirt.volume.LibvirtRbdVolumeDriver',
                   'sheepdog=nova.virt.libvirt.volume.LibvirtNetVolumeDriver'
                   ],
                 help='Libvirt handlers for remote volumes.'),

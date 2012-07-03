@@ -64,6 +64,10 @@ volume_opts = [
                default=None,
                help='the libvirt uuid of the secret for the rbd_user'
                     'volumes'),
+    cfg.StrOpt('rbd_secret_file',
+               default=None,
+               help='path the file containing the secret for the rbd_user'
+                    'volumes'),
     ]
 
 FLAGS = flags.FLAGS
@@ -554,6 +558,8 @@ class RBDDriver(VolumeDriver):
             'driver_volume_type': 'rbd',
             'data': {
                 'name': '%s/%s' % (FLAGS.rbd_pool, volume['name']),
+                'pool': FLAGS.rbd_pool,
+                'image' : volume['name'],
                 'auth_enabled': FLAGS.rbd_secret_uuid is not None,
                 'auth_username': FLAGS.rbd_user,
                 'secret_type': 'ceph',

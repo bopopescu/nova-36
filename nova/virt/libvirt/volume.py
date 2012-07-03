@@ -28,6 +28,8 @@ from nova import utils
 LOG = logging.getLogger(__name__)
 FLAGS = flags.FLAGS
 flags.DECLARE('num_iscsi_scan_tries', 'nova.volume.driver')
+flags.DECLARE('rbd_secret_file', 'nova.volume.driver')
+flags.DECLARE('rbd_user', 'nova.volume.driver')
 
 
 class LibvirtVolumeDriver(object):
@@ -67,6 +69,62 @@ class LibvirtFakeVolumeDriver(LibvirtVolumeDriver):
                      <target dev='%s' bus='virtio'/>
                  </disk>""" % (protocol, name, mount_device)
         return xml
+
+class LibvirtRbdVolumeDriver(LibvirtVolumeDriver):
+    """Driver to attach RBD volumes to libvirt."""
+
+    def _rbd_get_mapped_device(self, pool, image):
+        (out, err) = utils.execute('rbd', 'showmapped')
+        lines = out.split('\n')
+        del(lines[0])
+        device_path=""
+        for line in lines:
+            elements = line.split('\t')
+            # elements is now [ id, pool, image, snap, device ]
+            if len(elements) == 5 and elements[1] == pool and elements[2] == image:
+                device_path = elements[4]
+                break
+        LOG.debug("device path: %s" % ( device_path))
+        if len(device_path) == 0:
+            LOG.info("No host device found for rbd image %s/%s" % (pool, image))
+        return device_path
+
+    def _rbd_map_volume(self, connection_info):
+        pool = connection_info['data']['pool']
+        image = connection_info['data']['image']
+        (out, err) = utils.execute('rbd', 'map', '-p', pool, image,
+                                   '--secret', FLAGS.rbd_secret_file,
+                                   '--user', FLAGS.rbd_user,
+                                   run_as_root=True)
+        LOG.debug("rbd map: stdout=%s stderr=%s" % ( out, err))
+        return self._rbd_get_mapped_device(pool, image)
+
+    def _rbd_unmap_volume(self, connection_info):
+        pool = connection_info['data']['pool']
+        image = connection_info['data']['image']
+        host_device = self._rbd_get_mapped_device(pool, image)
+        if len(host_device) > 0:
+           (out, err) = utils.execute('rbd', 'unmap', host_device,
+                                   '--secret', FLAGS.rbd_secret_file,
+                                   '--user', FLAGS.rbd_user,
+                                   run_as_root=True)
+           LOG.debug("rbd unmap: stdout=%s stderr=%s" % ( out, err))
+
+
+    def connect_volume(self, connection_info, mount_device):
+        """Connect the volume. Returns xml for libvirt."""
+        driver = self._pick_volume_driver()
+        host_device = self._rbd_map_volume(connection_info)
+
+        connection_info['data']['device_path'] = host_device
+        sup = super(LibvirtRbdVolumeDriver, self)
+        return sup.connect_volume(connection_info, mount_device)
+
+    def disconnect_volume(self, connection_info, mount_device):
+        """Detach the volume from instance_name"""
+        sup = super(LibvirtRbdVolumeDriver, self)
+        sup.disconnect_volume(connection_info, mount_device)
+        self._rbd_unmap_volume(connection_info)
 
 
 class LibvirtNetVolumeDriver(LibvirtVolumeDriver):

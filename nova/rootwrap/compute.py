@@ -113,6 +113,9 @@ filterlist = [
     # nova/virt/libvirt/connection.py: 'dd', "if=%s" % virsh_output, ...
     filters.CommandFilter("/bin/dd", "root"),
 
+    # nova/virt/libvirt/volume.py: 'rbd', "map/showmapped", ...
+    filters.CommandFilter("/usr/bin/rbd", "root"),
+
     # nova/virt/xenapi/volume_utils.py: 'iscsiadm', '-m', ...
     filters.CommandFilter("/sbin/iscsiadm", "root"),
 

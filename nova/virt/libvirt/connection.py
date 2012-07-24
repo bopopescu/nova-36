@@ -1500,8 +1500,10 @@ class LibvirtConnection(driver.ComputeDriver):
         inst_type = instance_types.get_instance_type(inst_type_id)
 
         if FLAGS.use_cow_images:
+            driver_name = 'tap'
             driver_type = 'qcow2'
         else:
+            driver_name = 'file'
             driver_type = 'raw'
 
         if image_meta and image_meta.get('disk_format') == 'iso':
@@ -1536,7 +1538,25 @@ class LibvirtConnection(driver.ComputeDriver):
                                'device': block_device.strip_dev(
                                    eph['device_name'])})
 
+        if FLAGS.libvirt_type == 'xen':
+            # default vm_mode to xen (aka pv) for xen, if no vm_mode is
+            # specified for an image, to not change the behavior of the
+            # xen driver
+            vm_mode = instance.get('vm_mode')
+            if not vm_mode:
+              vm_mode = 'xen'
+            else:
+              vm_mode = vm_mode.lower()
+                
+            if vm_mode in ('hv', 'hvm'):
+                vm_mode = 'hvm'
+            if vm_mode not in ('xen', 'hvm'):
+                vm_mode = 'hvm'
+        else:
+            vm_mode = None
+
         xml_info = {'type': FLAGS.libvirt_type,
+                    'vm_mode': vm_mode,
                     'name': instance['name'],
                     'uuid': instance['uuid'],
                     'cachemode': self.disk_cachemode,
@@ -1547,6 +1567,7 @@ class LibvirtConnection(driver.ComputeDriver):
                     'rescue': rescue,
                     'disk_prefix': self._disk_prefix,
                     'driver_type': driver_type,
+                    'driver_name': driver_name,
                     'root_device_type': root_device_type,
                     'vif_type': FLAGS.libvirt_vif_type,
                     'nics': nics,

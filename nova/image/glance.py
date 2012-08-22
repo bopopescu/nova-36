@@ -56,17 +56,20 @@ def _parse_image_ref(image_href):
     port = o.port or 80
     host = o.netloc.split(':', 1)[0]
     image_id = o.path.split('/')[-1]
-    return (image_id, host, port)
+    use_ssl = (o.scheme == 'https')
+    return (image_id, host, port, use_ssl)
 
 
-def _create_glance_client(context, host, port):
+def _create_glance_client(context, host, port, use_ssl):
     if FLAGS.auth_strategy == 'keystone':
         # NOTE(dprince): Glance client just needs auth_tok right? Should we
         # add username and tenant to the creds below?
         creds = {'strategy': 'keystone',
                  'username': context.user_id,
                  'tenant': context.project_id}
-        glance_client = GlanceClient(host, port, auth_tok=context.auth_token,
+        glance_client = GlanceClient(host, port, use_ssl=use_ssl,
+                                     auth_tok=context.auth_token,
+                                     insecure=FLAGS.glance_api_insecure,
                                      creds=creds)
     else:
         glance_client = GlanceClient(host, port)
@@ -82,10 +85,14 @@ def pick_glance_api_server():
 
         Returns (host, port)
     """
-    host_port = random.choice(FLAGS.glance_api_servers)
-    host, port_str = host_port.split(':')
-    port = int(port_str)
-    return host, port
+    server = random.choice(FLAGS.glance_api_servers)
+    if server.find('//') == -1:
+        server = 'http://' + server
+    o = urlparse.urlparse(server)
+    port = o.port or 80
+    host = o.netloc.split(':', 1)[0]
+    use_ssl = (o.scheme == 'https')
+    return host, port, use_ssl
 
 
 def get_glance_client(context, image_href):
@@ -100,21 +107,24 @@ def get_glance_client(context, image_href):
     :returns: a tuple of the form (glance_client, image_id)
 
     """
-    glance_host, glance_port = pick_glance_api_server()
+    glance_host, glance_port, use_ssl = pick_glance_api_server()
 
     # check if this is an id
     if '/' not in str(image_href):
         glance_client = _create_glance_client(context,
                                               glance_host,
-                                              glance_port)
+                                              glance_port,
+                                              use_ssl)
         return (glance_client, image_href)
 
     else:
         try:
-            (image_id, glance_host, glance_port) = _parse_image_ref(image_href)
+            (image_id, glance_host, glance_port, use_ssl) = \
+                _parse_image_ref(image_href)
             glance_client = _create_glance_client(context,
                                                   glance_host,
-                                                  glance_port)
+                                                  glance_port,
+                                                  use_ssl)
         except ValueError:
             raise exception.InvalidImageRef(image_href=image_href)
 
@@ -133,8 +143,11 @@ class GlanceImageService(object):
         # is made to choose a new server each time via this property.
         if self._client is not None:
             return self._client
-        glance_host, glance_port = pick_glance_api_server()
-        return _create_glance_client(context, glance_host, glance_port)
+        glance_host, glance_port, use_ssl = pick_glance_api_server()
+        return _create_glance_client(context,
+                                     glance_host,
+                                     glance_port,
+                                     use_ssl)
 
     def _call_retry(self, context, name, *args, **kwargs):
         """Retry call to glance server if there is a connection error.

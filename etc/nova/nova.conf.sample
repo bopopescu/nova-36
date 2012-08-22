@@ -81,7 +81,7 @@
 # firewall_driver="nova.virt.firewall.IptablesFirewallDriver"
 ###### (StrOpt) full class name for the DNS Manager for floating IPs
 # floating_ip_dns_manager="nova.network.dns_driver.DNSDriver"
-###### (ListOpt) A list of the glance api servers available to nova ([hostname|ip]:port)
+###### (ListOpt) A list of the glance api servers available to nova.  Prefix with https:// for ssl-based glance api servers.  ([hostname|ip]:port)
 # glance_api_servers="$glance_host:$glance_port"
 ###### (StrOpt) default glance hostname or ip
 # glance_host="$my_ip"
@@ -89,6 +89,8 @@
 # glance_num_retries=0
 ###### (IntOpt) default glance port
 # glance_port=9292
+###### (BoolOpt) If passed, allow to perform insecure SSL (https) requests to glance
+# glance_api_insecure=false
 ###### (StrOpt) Name of this node.  This can be an opaque identifier.  It is not necessarily a hostname, FQDN, or IP address.
 # host="nova"
 ###### (StrOpt) The service to use for retrieving and searching images.

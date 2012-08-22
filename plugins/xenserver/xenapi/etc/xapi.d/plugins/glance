@@ -137,7 +137,8 @@ def _download_tarball_and_verify(request, staging_path):
         logging.info(msg % locals())
 
 
-def _download_tarball(sr_path, image_id, glance_host, glance_port, auth_token):
+def _download_tarball(sr_path, image_id, glance_host, glance_port,
+                      glance_use_ssl, auth_token):
     """Download the tarball image from Glance and extract it into the staging
     area. Retry if there is any failure.
     """
@@ -146,7 +147,12 @@ def _download_tarball(sr_path, image_id, glance_host, glance_port, auth_token):
     if auth_token:
         headers['x-auth-token'] = auth_token
 
-    url = "http://%(glance_host)s:%(glance_port)d/v1/images/"\
+    if glance_use_ssl:
+        scheme = 'https'
+    else:
+        scheme = 'http'
+
+    url = "%(scheme)s://%(glance_host)s:%(glance_port)d/v1/images/"\
           "%(image_id)s" % locals()
     logging.info("Downloading %s" % url)
 
@@ -349,14 +355,22 @@ def _prepare_staging_area_for_upload(sr_path, staging_path, vdi_uuids):
 
 
 def _upload_tarball(staging_path, image_id, glance_host, glance_port,
-                    auth_token, properties):
+                    glance_use_ssl, auth_token, properties):
     """
     Create a tarball of the image and then stream that into Glance
     using chunked-transfer-encoded HTTP.
     """
-    url = 'http://%s:%s/v1/images/%s' % (glance_host, glance_port, image_id)
+    if glance_use_ssl:
+        scheme = 'https'
+    else:
+        scheme = 'http'
+    url = '%s://%s:%s/v1/images/%s' % (scheme, glance_host, glance_port,
+                                       image_id)
     logging.info("Writing image data to %s" % url)
-    conn = httplib.HTTPConnection(glance_host, glance_port)
+    if glance_use_ssl:
+        conn = httplib.HTTPSConnection(glance_host, glance_port)
+    else:
+        conn = httplib.HTTPConnection(glance_host, glance_port)
 
     # NOTE(sirp): httplib under python2.4 won't accept a file-like object
     # to request
@@ -520,6 +534,7 @@ def download_vhd(session, args):
     image_id = params["image_id"]
     glance_host = params["glance_host"]
     glance_port = params["glance_port"]
+    glance_use_ssl = params["glance_use_ssl"]
     uuid_stack = params["uuid_stack"]
     sr_path = params["sr_path"]
     auth_token = params["auth_token"]
@@ -527,7 +542,8 @@ def download_vhd(session, args):
     staging_path = None
     try:
         staging_path = _download_tarball(sr_path, image_id, glance_host,
-                                         glance_port, auth_token)
+                                         glance_port, glance_use_ssl,
+                                         auth_token)
         # Right now, it's easier to return a single string via XenAPI,
         # so we'll json encode the list of VHDs.
         return json.dumps(_import_vhds(sr_path, staging_path, uuid_stack))
@@ -544,6 +560,7 @@ def upload_vhd(session, args):
     image_id = params["image_id"]
     glance_host = params["glance_host"]
     glance_port = params["glance_port"]
+    glance_use_ssl = params["glance_use_ssl"]
     sr_path = params["sr_path"]
     auth_token = params["auth_token"]
     properties = params["properties"]
@@ -552,7 +569,7 @@ def upload_vhd(session, args):
     try:
         _prepare_staging_area_for_upload(sr_path, staging_path, vdi_uuids)
         _upload_tarball(staging_path, image_id, glance_host, glance_port,
-                        auth_token, properties)
+                        glance_use_ssl, auth_token, properties)
     finally:
         _cleanup_staging_area(staging_path)
 

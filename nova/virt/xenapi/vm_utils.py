@@ -434,7 +434,8 @@ class VMHelper(xenapi.HelperBase):
         LOG.debug(_("Asking xapi to upload %(vdi_uuids)s as"
                     " ID %(image_id)s") % locals())
 
-        glance_host, glance_port = glance.pick_glance_api_server()
+        glance_host, glance_port, glance_use_ssl = \
+            glance.pick_glance_api_server()
 
         properties = {}
         properties['auto_disk_config'] = instance.auto_disk_config
@@ -444,6 +445,7 @@ class VMHelper(xenapi.HelperBase):
                   'image_id': image_id,
                   'glance_host': glance_host,
                   'glance_port': glance_port,
+                  'glance_use_ssl': glance_use_ssl,
                   'sr_path': cls.get_sr_path(session),
                   'auth_token': getattr(context, 'auth_token', None),
                   'properties': properties}
@@ -720,10 +722,12 @@ class VMHelper(xenapi.HelperBase):
         max_attempts = FLAGS.glance_num_retries + 1
         sleep_time = 0.5
         for attempt_num in xrange(1, max_attempts + 1):
-            glance_host, glance_port = glance.pick_glance_api_server()
+            glance_host, glance_port, glance_use_ssl = \
+                glance.pick_glance_api_server()
             params = {'image_id': image,
                       'glance_host': glance_host,
                       'glance_port': glance_port,
+                      'glance_use_ssl': glance_use_ssl,
                       'uuid_stack': uuid_stack,
                       'sr_path': cls.get_sr_path(session),
                       'num_retries': 0,

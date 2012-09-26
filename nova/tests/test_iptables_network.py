@@ -144,7 +144,15 @@ class IptablesManagerTestCase(test.TestCase):
                             "Duplicate line: %s" % line)
             seen_lines.add(line)
 
-        for chain in ['FORWARD', 'OUTPUT']:
+        for chain in ['FORWARD']:
+            for line in new_lines:
+                if line.startswith('-A %s' % chain):
+                    self.assertTrue('-j nova-filter-FORWARD-sitelocl' in line,
+                                    "First %s rule does not "
+                                    "jump to nova-filter-FORWARD-sitelocl" % chain)
+                    break
+
+        for chain in ['OUTPUT']:
             for line in new_lines:
                 if line.startswith('-A %s' % chain):
                     self.assertTrue('-j nova-filter-top' in line,

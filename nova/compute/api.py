@@ -513,6 +513,11 @@ class API(BaseAPI):
                     continue
                 values['volume_size'] = size
 
+            if values['volume_size'] == "":
+                volume = self.volume_api.get(elevated_context, 
+                                             values['volume_id'])
+                values['volume_size'] = volume['size']
+
             # NOTE(yamahata): NoDevice eliminates devices defined in image
             #                 files by command line option.
             #                 (--block-device-mapping)

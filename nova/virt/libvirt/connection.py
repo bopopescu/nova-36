@@ -792,6 +792,15 @@ class LibvirtConnection(driver.ComputeDriver):
         dom = self._lookup_by_name(instance.name)
         (state, _max_mem, _mem, _cpus, _t) = dom.info()
         state = LIBVIRT_POWER_STATE[state]
+        # NOTE(mbarringer): If an instance is no longer running
+        #                   (because the compute node has been rebooted,
+        #                   for example), force a hard reboot in order to
+        #                   reconnect the volumes.
+        if state in [power_state.NOSTATE,
+                     power_state.SHUTDOWN,
+                     power_state.CRASHED]:
+            return False
+
         # NOTE(vish): This check allows us to reboot an instance that
         #             is already shutdown.
         if state == power_state.RUNNING:

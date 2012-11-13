@@ -209,7 +209,7 @@ class LibvirtISCSIVolumeDriver(LibvirtVolumeDriver):
         # NOTE(vish): If we have another lun on the same target, we may
         #             have a duplicate login
         self._run_iscsiadm(iscsi_properties, ("--login",),
-                           check_exit_code=[0, 255])
+                           check_exit_code=[0, 254, 255])
 
         self._iscsiadm_update(iscsi_properties, "node.startup", "automatic")
 

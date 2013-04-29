@@ -347,6 +347,11 @@ class IptablesManager(object):
         # among the various nova components. It sits at the very top
         # of FORWARD and OUTPUT.
         for tables in [self.ipv4, self.ipv6]:
+            tables['filter'].add_chain('nova-filter-FORWARD-sitelocl',
+                                       wrap=False)
+            tables['filter'].add_rule('FORWARD',
+                '-j nova-filter-FORWARD-sitelocl', wrap=False, top=True)
+
             tables['filter'].add_chain('nova-filter-top', wrap=False)
             tables['filter'].add_rule('FORWARD', '-j nova-filter-top',
                                       wrap=False, top=True)

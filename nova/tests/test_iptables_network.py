@@ -37,6 +37,8 @@ class IptablesManagerTestCase(test.TestCase):
                      ':%s-local - [0:0]' % (binary_name),
                      ':%s-OUTPUT - [0:0]' % (binary_name),
                      ':nova-filter-top - [0:0]',
+                     ':nova-filter-FORWARD-sitelocl - [0:0]',
+                     '[0:0] -A FORWARD -j nova-filter-FORWARD-sitelocl',
                      '[0:0] -A FORWARD -j nova-filter-top',
                      '[0:0] -A OUTPUT -j nova-filter-top',
                      '[0:0] -A nova-filter-top -j %s-local' % (binary_name),
@@ -211,7 +213,15 @@ class IptablesManagerTestCase(test.TestCase):
                             "Duplicate line: %s" % line)
             seen_lines.add(line)
 
-        for chain in ['FORWARD', 'OUTPUT']:
+        for chain in ['FORWARD']:
+            for line in new_lines:
+                if line.startswith('[0:0] -A %s' % chain):
+                    self.assertTrue('-j nova-filter-FORWARD-sitelocl' in line,
+                                    "First %s rule does not "
+                                    "jump to nova-filter-FORWARD-sitelocl" % chain)
+                    break
+
+        for chain in ['OUTPUT']:
             for line in new_lines:
                 if line.startswith('[0:0] -A %s' % chain):
                     self.assertTrue('-j nova-filter-top' in line,
@@ -250,7 +260,7 @@ class IptablesManagerTestCase(test.TestCase):
     def test_iptables_top_order(self):
         # Test iptables_top_regex
         current_lines = list(self.sample_filter)
-        current_lines[12:12] = ['[0:0] -A FORWARD -j iptables-top-rule']
+        current_lines[13:13] = ['[0:0] -A FORWARD -j iptables-top-rule']
         self.flags(iptables_top_regex='-j iptables-top-rule')
         new_lines = self.manager._modify_rules(current_lines,
                                                self.manager.ipv4['filter'],
@@ -260,7 +270,7 @@ class IptablesManagerTestCase(test.TestCase):
     def test_iptables_bottom_order(self):
         # Test iptables_bottom_regex
         current_lines = list(self.sample_filter)
-        current_lines[26:26] = ['[0:0] -A FORWARD -j iptables-bottom-rule']
+        current_lines[28:28] = ['[0:0] -A FORWARD -j iptables-bottom-rule']
         self.flags(iptables_bottom_regex='-j iptables-bottom-rule')
         new_lines = self.manager._modify_rules(current_lines,
                                                self.manager.ipv4['filter'],
@@ -270,8 +280,8 @@ class IptablesManagerTestCase(test.TestCase):
     def test_iptables_preserve_order(self):
         # Test both iptables_top_regex and iptables_bottom_regex
         current_lines = list(self.sample_filter)
-        current_lines[12:12] = ['[0:0] -A FORWARD -j iptables-top-rule']
-        current_lines[27:27] = ['[0:0] -A FORWARD -j iptables-bottom-rule']
+        current_lines[13:13] = ['[0:0] -A FORWARD -j iptables-top-rule']
+        current_lines[29:29] = ['[0:0] -A FORWARD -j iptables-bottom-rule']
         self.flags(iptables_top_regex='-j iptables-top-rule')
         self.flags(iptables_bottom_regex='-j iptables-bottom-rule')
         new_lines = self.manager._modify_rules(current_lines,

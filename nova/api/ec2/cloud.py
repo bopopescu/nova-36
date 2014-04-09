@@ -30,6 +30,7 @@ from oslo.config import cfg
 from nova.api.ec2 import ec2utils
 from nova.api.ec2 import inst_state
 from nova.api.metadata import password
+from nova.api.openstack import extensions
 from nova.api import validator
 from nova import availability_zones
 from nova import block_device
@@ -82,6 +83,9 @@ CONF.import_opt('internal_service_availability_zone',
 LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
+
+security_group_authorizer = extensions.extension_authorizer('compute',
+                                                            'security_groups')
 
 
 def validate_ec2_id(val):
@@ -632,6 +636,8 @@ class CloudController(object):
         security_group = self.security_group_api.get(context, group_name,
                                                      group_id)
 
+        security_group_authorizer(context, security_group)
+
         prevalues = kwargs.get('ip_permissions', [kwargs])
 
         rule_ids = []
@@ -664,6 +670,8 @@ class CloudController(object):
 
         security_group = self.security_group_api.get(context, group_name,
                                                      group_id)
+
+        security_group_authorizer(context, security_group)
 
         prevalues = kwargs.get('ip_permissions', [kwargs])
         postvalues = []
@@ -735,6 +743,8 @@ class CloudController(object):
 
         security_group = self.security_group_api.get(context, group_name,
                                                      group_id)
+
+        security_group_authorizer(context, security_group)
 
         self.security_group_api.destroy(context, security_group)
 
